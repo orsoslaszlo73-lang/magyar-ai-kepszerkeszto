@@ -1,1 +1,190 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>Magyar AI Képszerkesztő V1</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #101114;
+  color: white;
+}
+
+header {
+  padding: 18px;
+  text-align: center;
+  background: #191b20;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.version {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 5px;
+}
+
+main {
+  padding: 16px;
+  max-width: 700px;
+  margin: auto;
+}
+
+.upload {
+  display: block;
+  background: #2b6cff;
+  padding: 15px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#fileInput {
+  display: none;
+}
+
+#preview {
+  width: 100%;
+  max-height: 55vh;
+  object-fit: contain;
+  margin-top: 15px;
+  border-radius: 12px;
+  background: #080808;
+  display: none;
+}
+
+textarea {
+  width: 100%;
+  min-height: 110px;
+  margin-top: 15px;
+  padding: 14px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  background: #191b20;
+  color: white;
+  font-size: 16px;
+}
+
+.tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+button {
+  border: 0;
+  padding: 13px 8px;
+  border-radius: 10px;
+  background: #292c33;
+  color: white;
+  font-weight: bold;
+}
+
+.ai {
+  width: 100%;
+  margin-top: 15px;
+  background: #2b6cff;
+  font-size: 17px;
+}
+
+#status {
+  text-align: center;
+  margin-top: 12px;
+  opacity: 0.7;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Magyar AI Képszerkesztő</h1>
+  <div class="version">V1</div>
+</header>
+
+<main>
+
+<label class="upload">
+  📷 Kép kiválasztása
+  <input type="file" id="fileInput" accept="image/*">
+</label>
+
+<img id="preview">
+
+<textarea id="prompt"
+placeholder="Írd le magyarul, mit szeretnél módosítani a képen..."></textarea>
+
+<div class="tools">
+  <button onclick="tool('Háttér cseréje')">🏞️ Háttér</button>
+  <button onclick="tool('Természetes retusálás')">✨ Retus</button>
+  <button onclick="tool('Fények és színek javítása')">☀️ Fény / szín</button>
+  <button onclick="tool('Kép részletességének javítása')">🔍 Minőség</button>
+  <button onclick="tool('Kijelölt tárgy eltávolítása')">🧹 Eltávolítás</button>
+  <button onclick="tool('Képkivágás módosítása')">✂️ Vágás</button>
+</div>
+
+<button class="ai" onclick="editImage()">
+  AI SZERKESZTÉS
+</button>
+
+<div id="status">V1 készen áll</div>
+
+</main>
+
+<script>
+const input = document.getElementById("fileInput");
+const preview = document.getElementById("preview");
+const promptBox = document.getElementById("prompt");
+const statusBox = document.getElementById("status");
+
+input.addEventListener("change", function() {
+  const file = this.files[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    preview.src = e.target.result;
+    preview.style.display = "block";
+    statusBox.innerText = "Kép betöltve";
+  };
+
+  reader.readAsDataURL(file);
+});
+
+function tool(text) {
+  promptBox.value = text;
+}
+
+function editImage() {
+  if (!input.files[0]) {
+    statusBox.innerText = "Először válassz egy képet.";
+    return;
+  }
+
+  if (!promptBox.value.trim()) {
+    statusBox.innerText = "Írd le, mit szeretnél módosítani.";
+    return;
+  }
+
+  statusBox.innerText =
+    "V1: szerkesztési kérés előkészítve.";
+}
+</script>
+
+</body>
+</html>
