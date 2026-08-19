@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="hu">
+<body>
+<h1>Magyar AI Képszerkesztő</h1>
+
+<input type="file" id="kep" accept="image/*">
+
+<br><br>
+
+<img id="elo" style="max-width:100%; display:none;">
+
+<script>
+kep.onchange = function () {
+  const fajl = this.files[0];
+  if (!fajl) return;
+  elo.src = URL.createObjectURL(fajl);
+  elo.style.display = "block";
+};
+</script>
+
+</body>
+</html>
