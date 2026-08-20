@@ -1,85 +1,169 @@
-export default {
-  async fetch(request) {
-    const html = `<!DOCTYPE html>
+  export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (request.method === "POST" && url.pathname === "/edit") {
+      try {
+        if (!env.AI) {
+          return Response.json(
+            { error: "Az AI kapcsolat még nincs beállítva." },
+            { status: 500 }
+          );
+        }
+
+        const form = await request.formData();
+        const file = form.get("image");
+        const prompt = String(form.get("prompt") || "").trim();
+
+        if (!(file instanceof File)) {
+          return Response.json(
+            { error: "Válassz ki egy képet." },
+            { status: 400 }
+          );
+        }
+
+        if (!prompt) {
+          return Response.json(
+            { error: "Írd le, mit szeretnél módosítani." },
+            { status: 400 }
+          );
+        }
+
+        const image = new Uint8Array(await file.arrayBuffer());
+
+        const output = await env.AI.run(
+          "@cf/runwayml/stable-diffusion-v1-5-img2img",
+          {
+            prompt: prompt,
+            image: Array.from(image),
+            strength: 0.65,
+            guidance: 7.5,
+            num_steps: 20
+          }
+        );
+
+        return new Response(output, {
+          headers: {
+            "content-type": "image/png",
+            "cache-control": "no-store"
+          }
+        });
+
+      } catch (error) {
+        return Response.json(
+          { error: String(error?.message || error) },
+          { status: 500 }
+        );
+      }
+    }
+
+    return new Response(`<!DOCTYPE html>
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+
 <title>Magyar AI Képszerkesztő</title>
 
 <style>
-*{box-sizing:border-box}
-
-body{
-  margin:0;
-  background:#0b0f17;
-  color:white;
-  font-family:Arial,sans-serif;
+* {
+  box-sizing: border-box;
 }
 
-main{
-  max-width:700px;
-  margin:auto;
-  padding:22px;
+body {
+  margin: 0;
+  background: #0b0f17;
+  color: white;
+  font-family: Arial, sans-serif;
 }
 
-h1{
-  text-align:center;
+main {
+  max-width: 700px;
+  margin: auto;
+  padding: 25px 16px;
 }
 
-p{
-  color:#aeb8c8;
-  text-align:center;
+h1 {
+  font-size: 30px;
+  margin-bottom: 8px;
 }
 
-.card{
-  background:#151b27;
-  border-radius:18px;
-  padding:18px;
-  margin-top:18px;
+p {
+  color: #aeb8ca;
+  line-height: 1.5;
 }
 
-input,textarea,button{
-  width:100%;
-  font-size:16px;
-  box-sizing:border-box;
+.card {
+  background: #151b27;
+  border: 1px solid #293247;
+  border-radius: 18px;
+  padding: 18px;
+  margin-top: 18px;
 }
 
-input{
-  padding:14px;
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 10px;
 }
 
-textarea{
-  margin-top:15px;
-  min-height:120px;
-  padding:14px;
-  border-radius:12px;
+input[type=file] {
+  width: 100%;
 }
 
-button{
-  margin-top:15px;
-  padding:16px;
-  border:0;
-  border-radius:12px;
-  background:#2563eb;
-  color:white;
-  font-weight:bold;
+textarea {
+  width: 100%;
+  min-height: 120px;
+  background: #0c111b;
+  color: white;
+  border: 1px solid #39445c;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 16px;
 }
 
-img{
-  display:none;
-  width:100%;
-  max-height:55vh;
-  object-fit:contain;
-  margin-top:15px;
-  border-radius:12px;
+button {
+  width: 100%;
+  margin-top: 15px;
+  padding: 15px;
+  border: 0;
+  border-radius: 12px;
+  background: #5b8cff;
+  color: white;
+  font-size: 17px;
+  font-weight: bold;
 }
 
-#status{
-  margin-top:15px;
-  padding:12px;
-  background:#0d121c;
-  border-radius:10px;
+button:disabled {
+  opacity: .5;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  margin: 15px auto 0;
+  border-radius: 12px;
+}
+
+#status {
+  margin-top: 12px;
+  color: #b9c4d7;
+}
+
+#download {
+  display: block;
+  margin-top: 15px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #26334c;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.hidden {
+  display: none;
 }
 </style>
 </head>
@@ -92,30 +176,58 @@ img{
 
 <p>
 Tölts fel egy képet, majd írd le magyarul,
-mit szeretnél rajta módosítani.
+hogyan szeretnéd átalakítani.
 </p>
 
 <div class="card">
 
-<input
-type="file"
-id="kep"
-accept="image/*">
+<label>1. Kép feltöltése</label>
 
-<img id="elo">
+<input
+  id="image"
+  type="file"
+  accept="image/*"
+>
+
+<img
+  id="preview"
+  class="hidden"
+>
+
+</div>
+
+<div class="card">
+
+<label>2. Mit változtassak?</label>
 
 <textarea
-id="utasitas"
-placeholder="Például: távolítsd el a hátteret és tegyél mögé tengerpartot.">
-</textarea>
+  id="prompt"
+  placeholder="Például: Cseréld le a hátteret naplementés tengerpartra."
+></textarea>
 
-<button id="szerkeszt">
-KÉP SZERKESZTÉSE
+<button id="edit">
+AI képszerkesztés
 </button>
 
-<div id="status">
-Készen áll.
+<div id="status"></div>
+
 </div>
+
+<div
+  id="resultBox"
+  class="card hidden"
+>
+
+<label>3. Elkészült kép</label>
+
+<img id="result">
+
+<a
+  id="download"
+  download="szerkesztett-kep.png"
+>
+Kép mentése
+</a>
 
 </div>
 
@@ -123,61 +235,166 @@ Készen áll.
 
 <script>
 
-const kep =
-document.getElementById("kep");
+const imageInput =
+  document.getElementById("image");
 
-const elo =
-document.getElementById("elo");
+const preview =
+  document.getElementById("preview");
 
-const utasitas =
-document.getElementById("utasitas");
+const promptInput =
+  document.getElementById("prompt");
+
+const button =
+  document.getElementById("edit");
 
 const status =
-document.getElementById("status");
+  document.getElementById("status");
 
-kep.onchange = function(){
+const resultBox =
+  document.getElementById("resultBox");
 
-  const fajl = this.files[0];
+const result =
+  document.getElementById("result");
 
-  if(!fajl) return;
+const download =
+  document.getElementById("download");
 
-  elo.src =
-  URL.createObjectURL(fajl);
 
-  elo.style.display =
-  "block";
+imageInput.onchange = () => {
 
-  status.textContent =
-  "Kép betöltve.";
+  const file =
+    imageInput.files[0];
+
+  if (!file) return;
+
+  preview.src =
+    URL.createObjectURL(file);
+
+  preview.classList.remove("hidden");
 };
 
-document.getElementById("szerkeszt")
-.onclick = function(){
 
-  if(!kep.files[0]){
+button.onclick = async () => {
+
+  const file =
+    imageInput.files[0];
+
+  const prompt =
+    promptInput.value.trim();
+
+
+  if (!file) {
+
     status.textContent =
-    "Először válassz képet.";
+      "Előbb válassz ki egy képet.";
+
     return;
   }
 
-  if(!utasitas.value.trim()){
+
+  if (!prompt) {
+
     status.textContent =
-    "Írd le, mit szeretnél módosítani.";
+      "Írd le, mit szeretnél módosítani.";
+
     return;
   }
+
+
+  button.disabled = true;
 
   status.textContent =
-  "A felület működik. Következő lépés: AI képszerkesztő motor csatlakoztatása.";
+    "Az AI dolgozik a képen...";
+
+  resultBox.classList.add("hidden");
+
+
+  try {
+
+    const form =
+      new FormData();
+
+    form.append(
+      "image",
+      file
+    );
+
+    form.append(
+      "prompt",
+      prompt
+    );
+
+
+    const response =
+      await fetch(
+        "/edit",
+        {
+          method: "POST",
+          body: form
+        }
+      );
+
+
+    if (!response.ok) {
+
+      let message =
+        "Hiba történt.";
+
+      try {
+
+        const data =
+          await response.json();
+
+        message =
+          data.error || message;
+
+      } catch {}
+
+      throw new Error(message);
+    }
+
+
+    const blob =
+      await response.blob();
+
+    const url =
+      URL.createObjectURL(blob);
+
+
+    result.src = url;
+
+    download.href = url;
+
+    resultBox.classList.remove(
+      "hidden"
+    );
+
+    status.textContent =
+      "Kész!";
+
+  }
+
+  catch (error) {
+
+    status.textContent =
+      "Hiba: " + error.message;
+
+  }
+
+  finally {
+
+    button.disabled = false;
+
+  }
 };
 
 </script>
 
 </body>
-</html>`;
-
-    return new Response(html, {
+</html>`, {
       headers: {
-        "content-type": "text/html;charset=UTF-8"
+        "content-type": "text/html; charset=UTF-8",
+        "cache-control": "no-store"
       }
     });
   }
